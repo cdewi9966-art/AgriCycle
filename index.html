@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="id"><head>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">S<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#174d35"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg" type="image/svg+xml"><title>AgriCycle | Limbah Terolah, Pertanian Tumbuh</title>
+<style>
+:root{--g:#174d35;--g2:#28734d;--p:#eaf3ec;--bg:#f6f9f6;--line:#dce6de;--muted:#6b7b70;--red:#a33b35}*{box-sizing:border-box}body{margin:0;background:#edf2ee;color:#203128;font:15px system-ui}.app{max-width:520px;min-height:100vh;margin:auto;background:var(--bg);padding-bottom:78px}.head{background:var(--g);color:white;padding:20px;border-radius:0 0 24px 24px}.brand{font:bold 25px Georgia}.tag{font:12px Georgia;color:#d6e6da}.head h1{font:24px Georgia;margin:23px 0 5px}.head p{font-size:13px;color:#d6e6da;margin:0}.main{padding:16px}.card,.stat{background:white;border:1px solid var(--line);border-radius:15px;padding:14px;margin:11px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat b{display:block;font-size:26px;color:var(--g)}button,.btn{border:0;border-radius:11px;padding:12px 14px;background:var(--g2);color:white;font-weight:700;cursor:pointer}.light{background:var(--p);color:var(--g)}.danger{background:#f9e9e8;color:var(--red)}.full{width:100%}.field{margin:12px 0}.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit;background:white}.field textarea{min-height:70px}.muted{color:var(--muted);font-size:12px}.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:flex;justify-content:space-around;background:white;border-top:1px solid var(--line);padding:10px 2px}.tabs button{background:white;color:var(--g);padding:7px 5px;font-size:11px}.item{display:flex;gap:11px;align-items:center}.pic{width:64px;height:64px;object-fit:cover;border-radius:10px;background:var(--p)}.pill{font-size:11px;background:var(--p);color:var(--g);border-radius:20px;padding:4px 8px}.hide{display:none!important}.notice{padding:10px;border-radius:10px;background:#fff5dc;color:#6d5316;font-size:12px;margin:10px 0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row button{flex:1}.topline{display:flex;justify-content:space-between;align-items:center;gap:8px}.topline button{padding:8px 10px;font-size:12px}.empty{text-align:center;padding:24px;color:var(--muted)}
+</style></head><body><div class="app"><header class="head"><div class="brand">♻ AgriCycle</div><div class="tag">Limbah Terolah, Pertanian Tumbuh</div><h1 id="title">Selamat datang!</h1><p id="desc">Hubungkan limbah organik dengan peluang pemanfaatan baru.</p></header><main class="main" id="view"></main><nav class="tabs hide" id="tabs"><button onclick="show('home')">⌂ Beranda</button><button onclick="show('form')">＋ Tambah</button><button onclick="show('mine')">▤ Milik Saya</button><button onclick="show('market')">♧ Pasar</button></nav></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+const SUPABASE_URL='https://kgezwjadlhgckzfklmqd.supabase.co';const SUPABASE_ANON_KEY='sb_publishable_xlJMUv-L0IgMw73ufNGJcw_CTvKlqmI';
+const configured=SUPABASE_URL.startsWith('https://')&&!SUPABASE_URL.includes('GANTI_')&&!SUPABASE_ANON_KEY.includes('GANTI_');let sb=null,user=null,profile=null;const $=id=>document.getElementById(id);let current='home';
+if(configured&&window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+function heading(t,d){$('title').textContent=t;$('desc').textContent=d}function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function notice(){return configured?'':'<div class="notice">Mode persiapan: database belum dihubungkan. Isi URL dan anon key Supabase di index.html setelah membuat proyek Supabase. Jangan pernah memasukkan service_role key ke website.</div>'}
+function authView(mode='login'){heading('Selamat datang di AgriCycle','Masuk atau buat akun untuk menghubungkan limbah dengan pemanfaat.');$('tabs').classList.add('hide');$('view').innerHTML=notice()+`<section class="card"><div class="field"><label>Email</label><input id="email" type="email" autocomplete="email" placeholder="nama@email.com" required></div><div class="field"><label>Kata sandi</label><input id="password" type="password" autocomplete="current-password" minlength="8" placeholder="Minimal 8 karakter" required></div>${mode==='signup'?`<div class="field"><label>Nama</label><input id="name" placeholder="Nama Anda" required></div><div class="field"><label>Peran</label><select id="role"><option value="supplier">Penyetor / Pemasok</option><option value="utilizer">Pemanfaat</option></select></div>`:''}<button class="full" id="authBtn">${mode==='login'?'Masuk':'Daftar akun'}</button><p class="muted">${mode==='login'?'Belum punya akun?':'Sudah punya akun?'} <a href="#" id="switchAuth">${mode==='login'?'Daftar':'Masuk'}</a></p><p id="authMsg" class="muted"></p></section>`;
+$('switchAuth').onclick=e=>{e.preventDefault();authView(mode==='login'?'signup':'login')};$('authBtn').onclick=async()=>{if(!sb){$('authMsg').textContent='Hubungkan Supabase terlebih dahulu. Petunjuk ada di README.';return}let email=$('email').value.trim(),password=$('password').value;if(!email||password.length<8){$('authMsg').textContent='Masukkan email dan kata sandi minimal 8 karakter.';return}$('authBtn').disabled=true;let result;if(mode==='login')result=await sb.auth.signInWithPassword({email,password});else result=await sb.auth.signUp({email,password,options:{data:{full_name:$('name').value.trim(),role:$('role').value}}});$('authBtn').disabled=false;if(result.error){$('authMsg').textContent=result.error.message;return}if(mode==='signup'&&!result.data.session){$('authMsg').textContent='Pendaftaran berhasil. Periksa email untuk konfirmasi, lalu masuk.';return}await boot()}}
+async function boot(){if(!sb){authView();return}let {data:{session}}=await sb.auth.getSession();if(!session){user=null;profile=null;authView();return}user=session.user;let {data,error}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();if(error){authView();$('authMsg')?.textContent;return}profile=data;if(!profile){heading('Akun belum siap','Profil belum tersedia. Coba keluar lalu daftar kembali.');$('view').innerHTML='<div class="card">Profil akun tidak ditemukan. Hubungi administrator.</div>';return}$('tabs').classList.remove('hide');show('home')}
+async function getListings(own=false){let q=sb.from('waste_listings').select('*').order('created_at',{ascending:false});if(own)q=q.eq('supplier_id',user.id);else q=q.eq('status','available');let {data,error}=await q;return {data:data||[],error}}
+function card(x,own=false){return `<div class="card item">${x.photo_url?`<img class="pic" src="${esc(x.photo_url)}" alt="Foto limbah">`:'<div class="pic" style="display:grid;place-items:center;font-size:25px">♻</div>'}<div style="flex:1;min-width:0"><b>${esc(x.waste_type)}</b><div class="muted">${esc(x.quantity_kg)} kg · ${esc(x.condition||'-')}</div><div class="muted">${esc(x.location)}</div><span class="pill">${esc(x.status)}</span></div></div>${own?`<button class="danger full" onclick="removeListing('${x.id}')">Hapus penawaran</button>`:''}`}
+async function show(p){if(!user){authView();return}current=p;if(p==='home'){heading('Halo, '+(profile.full_name||'Pengguna')+'!','Anda masuk sebagai '+(profile.role==='supplier'?'Penyetor / Pemasok':'Pemanfaat')+'.');let {data,error}=await getListings(profile.role==='supplier');$('view').innerHTML=`<div class="topline"><span class="muted">Akun: ${esc(user.email)}</span><button class="light" onclick="logout()">Keluar</button></div>${error?'<div class="notice">Gagal memuat data. Periksa kebijakan database.</div>':''}<div class="grid"><div class="stat">Penawaran<b>${data.length}</b></div><div class="stat">Tersedia<b>${data.filter(x=>x.status==='available').length}</b></div></div>${profile.role==='supplier'?'<button class="full" onclick="show(\'form\')">＋ Tambah limbah</button>':'<button class="full" onclick="show(\'market\')">Lihat pasar limbah</button>'}<h3>Aktivitas terbaru</h3>${data.slice(0,3).map(x=>card(x)).join('')||'<div class="empty">Belum ada penawaran.</div>'}`}
+if(p==='form'){if(profile.role!=='supplier'){heading('Fitur pemasok','Akun Pemanfaat dapat melihat pasar dan menghubungi pemasok.');$('view').innerHTML='<div class="card">Gunakan menu Pasar untuk melihat limbah tersedia.</div>';return}heading('Unggah Limbah Organik','Lengkapi informasi limbah yang ingin ditawarkan.');$('view').innerHTML=`<div class="card"><form id="listingForm"><div class="field"><label>Foto limbah</label><input id="photo" type="file" accept="image/*"></div><div class="field"><label>Jenis limbah *</label><select id="type" required><option value="">Pilih jenis</option>${['Kulit buah','Sisa sayuran','Ampas buah','Sisa makanan organik','Lainnya'].map(x=>`<option>${x}</option>`).join('')}</select></div><div class="field"><label>Jumlah (kg) *</label><input id="qty" type="number" min="0.1" step="0.1" required></div><div class="field"><label>Kondisi *</label><select id="condition" required><option value="">Pilih kondisi</option><option>Segar</option><option>Mulai membusuk</option><option>Sudah dikeringkan</option><option>Campuran</option></select></div><div class="field"><label>Lokasi *</label><input id="location" required placeholder="Kecamatan/Kota"></div><div class="field"><label>Deskripsi</label><textarea id="description"></textarea></div><button class="full">Publikasikan penawaran</button><p id="formMsg" class="muted"></p></form></div>`;$('listingForm').onsubmit=async e=>{e.preventDefault();let btn=e.submitter;btn.disabled=true;let photoUrl=null,file=$('photo').files[0];if(file){if(file.size>5*1024*1024){$('formMsg').textContent='Ukuran foto maksimal 5 MB.';btn.disabled=false;return}let path=user.id+'/'+crypto.randomUUID()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');let up=await sb.storage.from('waste-photos').upload(path,file,{upsert:false});if(up.error){$('formMsg').textContent='Gagal mengunggah foto: '+up.error.message;btn.disabled=false;return}photoUrl=sb.storage.from('waste-photos').getPublicUrl(path).data.publicUrl}let ins=await sb.from('waste_listings').insert({supplier_id:user.id,waste_type:$('type').value,quantity_kg:Number($('qty').value),condition:$('condition').value,location:$('location').value,description:$('description').value,photo_url:photoUrl});btn.disabled=false;if(ins.error){$('formMsg').textContent=ins.error.message;return}alert('Penawaran berhasil dipublikasikan.');show('mine')}}
+if(p==='mine'||p==='market'){if(p==='mine'&&profile.role!=='supplier'){heading('Penawaran saya','Menu ini tersedia untuk akun pemasok.');$('view').innerHTML='<div class="card">Akun Pemanfaat dapat melihat daftar di menu Pasar.</div>';return}heading(p==='mine'?'Limbah Saya':'Pasar Limbah Organik',p==='mine'?'Kelola penawaran yang Anda publikasikan.':'Penawaran aktif dari para pemasok.');let {data,error}=await getListings(p==='mine');$('view').innerHTML=(error?'<div class="notice">Tidak dapat memuat data: '+esc(error.message)+'</div>':'')+(data.map(x=>card(x,p==='mine')).join('')||'<div class="empty">Belum ada penawaran.</div>')}}
+async function removeListing(id){if(!confirm('Hapus penawaran ini?'))return;let {error}=await sb.from('waste_listings').delete().eq('id',id);if(error)alert(error.message);else show('mine')}
+async function logout(){await sb.auth.signOut();boot()}sb?.auth.onAuthStateChange((_event,_session)=>{if(!_session){user=null;profile=null;authView()}});boot();if('serviceWorker'in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+<!-- === FITUR CHAT REAL-TIME AGRICYCLE === -->
+<div id="chat-section" style="margin: 15px 15px 100px 15px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #fff; box-sizing: border-box;">
+  <h3 style="color: #2e7d32; margin-top: 0; font-size: 16px;">💬 Obrolan Real-Time AgriCycle</h3>
+  
+  <div id="chat-box" style="height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; background: #f9f9f9; border-radius: 4px;"></div>
+  
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <input type="email" id="chat-receiver" placeholder="Email tujuan..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+    <div style="display: flex; gap: 6px;">
+      <input type="text" id="chat-text" placeholder="Ketik pesan..." style="flex: 1; min-width: 0; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+      <button id="btn-send-chat" style="padding: 10px 16px; background: #2e7d32; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Kirim</button>
+    </div>
+  </div>
+</div>
+
+<script>
+ async function loadMessages() {
+    if (typeof sb === 'undefined') return;
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return;
+
+   const { data: messages } = await sb
+      .from('messages')
+      .select('*')
+      .or(`sender_email.eq.${user.email},receiver_email.eq.${user.email}`)
+      .order('created_at', { ascending: true });
+
+    const chatBox = document.getElementById('chat-box');
+    if (chatBox) {
+      chatBox.innerHTML = '';
+      if (messages) {
+        messages.forEach(msg => {
+          const isMe = msg.sender_email === user.email;
+          chatBox.innerHTML += `<div style="margin-bottom: 8px; text-align: ${isMe ? 'right' : 'left'}">
+            <small style="color: #666;">${msg.sender_email}</small><br>
+            <span style="display: inline-block; padding: 6px 10px; border-radius: 8px; background: ${isMe ? '#e8f5e9' : '#f5f5f5'};">${msg.message_text}</span>
+          </div>`;
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    }
+  }
+
+  setInterval(async () => {
+    if (typeof sb !== 'undefined') {
+      const { data: { user } } = await sb.auth.getUser();
+      if (user) {
+        loadMessages();
+      }
+    }
+  }, 2000);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-send-chat')?.addEventListener('click', async () => {
+      if (typeof sb === 'undefined') return;
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return alert('Silakan login terlebih dahulu!');
+
+      const receiver = document.getElementById('chat-receiver').value;
+      const text = document.getElementById('chat-text').value;
+
+      if (!receiver || !text) return alert('Email tujuan dan pesan tidak boleh kosong!');
+
+      await sb.from('messages').insert([
+        { sender_email: user.email, receiver_email: receiver, message_text: text }
+      ]);
+
+      document.getElementById('chat-text').value = '';
+      loadMessages();
+    });
+  });
+</script>
+<!-- === FITUR TRANSAKSI & AGRI POINTS === -->
+<div id="transaction-section" style="margin: 20px; padding: 15px; border: 1px solid #2e7d32; border-radius: 8px; background: #f1f8e9; clear: both;">
+  <h3 style="color: #1b5e20; margin-top: 0;">🛒 Transaksi & Agri Points</h3>
+  <div style="background: #fff; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #c8e6c9;">
+    <strong>Saldo Agri Points Anda: </strong><span id="user-points" style="color: #2e7d32; font-size: 18px; font-weight: bold;">0</span> Poin
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+    <input type="text" id="tx-seller" placeholder="Email Pemasok tujuan..." style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <input type="text" id="tx-item" placeholder="Nama limbah (misal: Sisa Sayuran)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <input type="number" id="tx-weight" placeholder="Berat (kg) - Harga Rp 2.000/kg" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <select id="tx-payment" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+      <option value="QRIS">Metode Bayar: QRIS Instan</option>
+      <option value="Transfer Bank">Metode Bayar: Transfer Bank</option>
+      <option value="COD">Metode Bayar: Bayar di Tempat (COD)</option>
+    </select>
+    <button id="btn-submit-tx" type="button" style="padding: 10px; background: #2e7d32; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Buat Pesanan & Klaim Poin</button>
+  </div>
+
+  <h4 style="margin-bottom: 5px; color: #333;">Riwayat Transaksi Terakhir:</h4>
+  <div id="tx-history" style="max-height: 150px; overflow-y: auto; font-size: 13px; background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #ddd;"></div>
+</div>
+
+<script>
+  async function ambilEmailAktif() {
+    try {
+      if (typeof sb !== 'undefined' && sb.auth) {
+        if (typeof sb.auth.getUser === 'function') {
+          const res = await sb.auth.getUser();
+          if (res.data && res.data.user) return res.data.user.email;
+        }
+        if (typeof sb.auth.user === 'function' && sb.auth.user()) {
+          return sb.auth.user().email;
+        }
+      }
+    } catch (e) {}
+    return localStorage.getItem('user_email') || 'pembeli@agricycle.com';
+  }
+
+  async function muatTransaksi() {
+    if (typeof sb === 'undefined') return;
+    const emailSaya = await ambilEmailAktif();
+
+    const { data: daftarTx } = await sb
+      .from('transactions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    const kotakRiwayat = document.getElementById('tx-history');
+    const tampilanPoin = document.getElementById('user-points');
+    let totalPoin = 0;
+
+    if (kotakRiwayat && daftarTx) {
+      kotakRiwayat.innerHTML = '';
+      daftarTx.forEach(tx => {
+        if (tx.buyer_email === emailSaya || tx.seller_email === emailSaya) {
+          totalPoin += Number(tx.points_earned || 0);
+          kotakRiwayat.innerHTML += `<div style="border-bottom: 1px solid #eee; padding: 6px 0;">
+            <strong>${tx.item_name} (${tx.weight_kg} kg)</strong> - Rp ${Number(tx.total_price).toLocaleString('id-ID')}<br>
+            <small style="color: #555;">Dari: ${tx.seller_email} | Status: <span style="color: #2e7d32;">${tx.status}</span> (+${tx.points_earned} Poin)</small>
+          </div>`;
+        }
+      });
+      if (tampilanPoin) tampilanPoin.innerText = totalPoin;
+    }
+  }
+
+  setInterval(muatTransaksi, 3000);
+
+  document.addEventListener('click', async function(e) {
+    if (e.target && e.target.id === 'btn-submit-tx') {
+      if (typeof sb === 'undefined') return alert('Koneksi database Supabase belum siap.');
+      
+      const emailSaya = await ambilEmailAktif();
+      const pemasok = document.getElementById('tx-seller').value.trim();
+      const namaLimbah = document.getElementById('tx-item').value.trim();
+      const berat = parseFloat(document.getElementById('tx-weight').value);
+
+      if (!pemasok || !namaLimbah || !berat || berat <= 0) {
+        return alert('Harap isi email pemasok, nama limbah, dan berat angka dengan benar!');
+      }
+
+      const totalHarga = berat * 2000;
+      const poinDidapat = Math.round(berat * 10);
+
+      const { error } = await sb.from('transactions').insert([{
+        buyer_email: emailSaya,
+        seller_email: pemasok,
+        item_name: namaLimbah,
+        weight_kg: berat,
+        total_price: totalHarga,
+        points_earned: poinDidapat,
+        status: 'Lunas / Diproses'
+      }]);
+
+      if (error) {
+        alert('Gagal menyimpan transaksi: ' + error.message);
+      } else {
+        alert('Transaksi Berhasil! Total: Rp ' + totalHarga.toLocaleString('id-ID') + ' dan Anda mendapatkan +' + poinDidapat + ' Agri Points.');
+        document.getElementById('tx-item').value = '';
+        document.getElementById('tx-weight').value = '';
+        muatTransaksi();
+      }
+    }
+  });
+</script>
+<!-- === PAKET 3 FITUR LENGKAP: PETA MAKASSAR, VERIFIKASI KUALITAS & TUKAR POIN === -->
+<link rel="stylesheet" href="https://unpkg.com" />
+<script src="https://unpkg.com"></script>
+
+<div id="extra-features-section" style="margin: 20px; padding: 15px; border: 1px solid #1b5e20; border-radius: 8px; background: #fff; clear: both;">
+  
+  <!-- 1. FITUR PENUKARAN AGRI POINTS -->
+  <h3 style="color: #1b5e20; margin-top: 0;">🎁 Penukaran Agri Points (Rewards)</h3>
+  <p style="font-size: 13px; color: #555; margin-top: -5px;">Tukarkan saldo poin Anda dengan manfaat pertanian & logistik:</p>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+    <button type="button" onclick="tukarPoin(30, 'Voucher Pupuk Kompos 5kg')" style="flex: 1; min-width: 140px; padding: 10px; background: #e8f5e9; border: 1px solid #2e7d32; border-radius: 6px; color: #1b5e20; font-weight: bold; cursor: pointer;">
+      🌱 Pupuk Kompos<br><small style="font-weight: normal;">(30 Poin)</small>
+    </button>
+    <button type="button" onclick="tukarPoin(50, 'Gratis Ongkir Jemput Limbah')" style="flex: 1; min-width: 140px; padding: 10px; background: #e8f5e9; border: 1px solid #2e7d32; border-radius: 6px; color: #1b5e20; font-weight: bold; cursor: pointer;">
+      🚚 Gratis Ongkir<br><small style="font-weight: normal;">(50 Poin)</small>
+    </button>
+  </div>
+
+  <!-- 2. FITUR CHECKLIST VERIFIKASI KUALITAS -->
+  <h3 style="color: #1b5e20; border-top: 1px solid #eee; padding-top: 15px;">✅ Verifikasi Kualitas & Serah Terima</h3>
+  <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px; font-size: 14px;">
+    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+      <input type="checkbox" id="chk-plastik"> Bebas dari sampah plastik & anorganik
+    </label>
+    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+      <input type="checkbox" id="chk-kondisi"> Kondisi limbah masih segar & layak olah
+    </label>
+    <label style="display: block; margin-bottom: 12px; cursor: pointer;">
+      <input type="checkbox" id="chk-berat"> Berat timbangan sesuai kesepakatan
+    </label>
+    <button type="button" onclick="konfirmasiKualitas()" style="width: 100%; padding: 9px; background: #2e7d32; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+      Konfirmasi Serah Terima (+15 Poin Bonus)
+    </button>
+  </div>
+
+  <!-- 3. FITUR PETA LOKASI INTERAKTIF MAKASSAR -->
+  <h3 style="color: #1b5e20; border-top: 1px solid #eee; padding-top: 15px;">📍 Peta Titik Limbah Kota Makassar</h3>
+  <p style="font-size: 13px; color: #555; margin-top: -5px;">Klik penanda hijau pada peta untuk melihat titik stok limbah aktif:</p>
+  <div id="map-makassar" style="height: 240px; width: 100%; border-radius: 8px; border: 1px solid #ccc; z-index: 1;"></div>
+</div>
+
+<script>
+  // Inisialisasi Peta Makassar (Leaflet OpenStreetMap)
+  setTimeout(() => {
+    const mapContainer = document.getElementById('map-makassar');
+    if (mapContainer && typeof L !== 'undefined' && !mapContainer._leaflet_id) {
+      const map = L.map('map-makassar').setView([-5.147665, 119.432732], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap Makassar'
+      }).addTo(map);
+
+      const titikLokasi = [
+        { nama: "Pasar Terong (Pemasok Sayur)", lat: -5.1325, lng: 119.4235, stok: "Sisa Sayuran - 25 kg" },
+        { nama: "Pasar Daya (Pemasok Buah)", lat: -5.1118, lng: 119.5112, stok: "Limbah Buah - 40 kg" },
+        { nama: "Tamalanrea (Mitra Pengolah)", lat: -5.1389, lng: 119.4883, stok: "Pusat Kompos & Maggot" }
+      ];
+
+      titikLokasi.forEach(loc => {
+        L.marker([loc.lat, loc.lng]).addTo(map)
+          .bindPopup(`<b>${loc.nama}</b><br>${loc.stok}`);
+      });
+    }
+  }, 1500);
+
+  // Fungsi Tukar Poin
+  async function tukarPoin(biayaPoin, namaHadiah) {
+    const elPoin = document.getElementById('user-points');
+    const saldoSekarang = parseInt(elPoin ? elPoin.innerText : '0', 10);
+
+    if (saldoSekarang < biayaPoin) {
+      return alert(`Maaf, saldo Agri Points Anda (${saldoSekarang} Poin) belum mencukupi untuk menukar ${namaHadiah} (${biayaPoin} Poin).`);
+    }
+
+    if (typeof sb !== 'undefined') {
+      const emailSaya = await ambilEmailAktif();
+      await sb.from('transactions').insert([{
+        buyer_email: emailSaya,
+        seller_email: 'sistem@agricycle.id',
+        item_name: 'Tukar Hadiah: ' + namaHadiah,
+        weight_kg: 0,
+        total_price: 0,
+        points_earned: -biayaPoin,
+        status: 'Voucher Diklaim'
+      }]);
+    }
+
+    alert(`Berhasil! Anda menukarkan ${biayaPoin} Poin untuk "${namaHadiah}". Kode voucher telah dikirim ke riwayat transaksi Anda.`);
+    if (typeof muatTransaksi === 'function') muatTransaksi();
+  }
+
+  // Fungsi Konfirmasi Checklist Kualitas
+  async function konfirmasiKualitas() {
+    const c1 = document.getElementById('chk-plastik').checked;
+    const c2 = document.getElementById('chk-kondisi').checked;
+    const c3 = document.getElementById('chk-berat').checked;
+
+    if (!c1 || !c2 || !c3) {
+      return alert('Harap centang semua kriteria pemeriksaan kualitas limbah sebelum melakukan konfirmasi serah terima!');
+    }
+
+    if (typeof sb !== 'undefined') {
+      const emailSaya = await ambilEmailAktif();
+      await sb.from('transactions').insert([{
+        buyer_email: emailSaya,
+        seller_email: 'verifikasi@agricycle.id',
+        item_name: 'Bonus Verifikasi Kualitas Limbah',
+        weight_kg: 0,
+        total_price: 0,
+        points_earned: 15,
+        status: 'Terverifikasi Lolos QC'
+      }]);
+    }
+
+    alert('Verifikasi Kualitas Berhasil! Serah terima limbah telah dicatat ke database dan Anda mendapatkan +15 Agri Points tambahan.');
+    document.getElementById('chk-plastik').checked = false;
+    document.getElementById('chk-kondisi').checked = false;
+    document.getElementById('chk-berat').checked = false;
+    if (typeof muatTransaksi === 'function') muatTransaksi();
+  }
+</script>
+<!-- === SISTEM NAVIGASI PER HALAMAN (TAB SLIDE) & PETA OTOMATIS === -->
+<div id="custom-tab-bar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #1b5e20; color: #fff; justify-content: space-evenly; align-items: center; padding: 12px 2px; z-index: 99999; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); font-size: 13px;">
+  <button type="button" onclick="bukaHalaman('utama')" style="background: none; border: none; color: #fff; font-weight: bold; cursor: pointer; padding: 4px;">🏠 Utama</button>
+  <button type="button" onclick="bukaHalaman('chat')" style="background: none; border: none; color: #fff; font-weight: bold; cursor: pointer; padding: 4px;">💬 Chat</button>
+  <button type="button" onclick="bukaHalaman('transaksi')" style="background: none; border: none; color: #fff; font-weight: bold; cursor: pointer; padding: 4px;">🛒 Transaksi</button>
+  <button type="button" onclick="bukaHalaman('peta')" style="background: none; border: none; color: #fff; font-weight: bold; cursor: pointer; padding: 4px;">📍 Peta & QC</button>
+</div>
+
+<script>
+  let petaMakassarObj = null;
+
+  function bukaHalaman(namaTab) {
+    const secChat = document.getElementById('chat-section');
+    const secTx = document.getElementById('transaction-section');
+    const secExtra = document.getElementById('extra-features-section');
+
+    if (secChat) secChat.style.display = 'none';
+    if (secTx) secTx.style.display = 'none';
+    if (secExtra) secExtra.style.display = 'none';
+
+    if (namaTab === 'chat' && secChat) {
+      secChat.style.display = 'block';
+    } else if (namaTab === 'transaksi' && secTx) {
+      secTx.style.display = 'block';
+    } else if (namaTab === 'peta' && secExtra) {
+      secExtra.style.display = 'block';
+      
+      // Memaksa peta digambar ulang setelah kotak terlihat
+      setTimeout(() => {
+        const wadahPeta = document.getElementById('map-makassar');
+        if (wadahPeta && typeof L !== 'undefined') {
+          if (!petaMakassarObj && !wadahPeta._leaflet_id) {
+            petaMakassarObj = L.map('map-makassar').setView([-5.147665, 119.432732], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '© OpenStreetMap Makassar'
+            }).addTo(petaMakassarObj);
+
+            const titikLokasi = [
+              { nama: "Pasar Terong (Pemasok Sayur)", lat: -5.1325, lng: 119.4235, stok: "Sisa Sayuran - 25 kg" },
+              { nama: "Pasar Daya (Pemasok Buah)", lat: -5.1118, lng: 119.5112, stok: "Limbah Buah - 40 kg" },
+              { nama: "Tamalanrea (Mitra Pengolah)", lat: -5.1389, lng: 119.4883, stok: "Pusat Kompos & Maggot" }
+            ];
+
+            titikLokasi.forEach(loc => {
+              L.marker([loc.lat, loc.lng]).addTo(petaMakassarObj)
+                .bindPopup(`<b>${loc.nama}</b><br>${loc.stok}`);
+            });
+          } else if (petaMakassarObj) {
+            petaMakassarObj.invalidateSize();
+          }
+        }
+      }, 200);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  setInterval(() => {
+    const teksHalaman = document.body.innerText || '';
+    const sedangLogin = teksHalaman.includes('Keluar') || teksHalaman.includes('Beranda');
+    const tabBar = document.getElementById('custom-tab-bar');
+
+    if (!sedangLogin) {
+      if (tabBar) tabBar.style.display = 'none';
+      if (document.getElementById('chat-section')) document.getElementById('chat-section').style.display = 'none';
+      if (document.getElementById('transaction-section')) document.getElementById('transaction-section').style.display = 'none';
+      if (document.getElementById('extra-features-section')) document.getElementById('extra-features-section').style.display = 'none';
+    } else {
+      if (tabBar && tabBar.style.display === 'none') {
+        tabBar.style.display = 'flex';
+        document.body.style.paddingBottom = '65px';
+        bukaHalaman('utama');
+      }
+    }
+  }, 800);
+</script>
+</body>
+</html>
